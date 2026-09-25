@@ -333,9 +333,7 @@ int PyroWaveDecoder::SubmitDecodeUnit(PDECODE_UNIT decodeUnit) {
 		Stats::instance().SubmitGpuDecodeMs(gpuMs);
 	if (!decoded) {
 		Utils::Log("PyroWave live: Decode failed\n");
-		AVFrame *tmp = m_pool->WrapFrame(set); // recycle the set via the free callback
-		if (tmp)
-			av_frame_free(&tmp);
+		m_pool->Recycle(set->index);
 		return DR_OK;
 	}
 

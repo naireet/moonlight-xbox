@@ -51,10 +51,12 @@ class FramePool {
 	// recycled). Caller fills pts and color fields.
 	AVFrame *WrapFrame(FrameSet *set);
 
+	// Returns an acquired set that was never wrapped (e.g. its decode failed).
+	void Recycle(int index);
+
   private:
 	friend struct FrameSet;
 	static void FreeCallback(void *opaque, uint8_t *data);
-	void Recycle(int index);
 
 	std::vector<FrameSet> m_sets;
 	std::vector<int> m_freeList;
