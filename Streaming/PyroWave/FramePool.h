@@ -13,7 +13,6 @@
 // carries a free callback that recycles the set, so every av_frame_free in
 // Pacer/FrameQueue returns planes to the pool automatically.
 
-#include "D3D11Decoder.h"
 #include <d3d11.h>
 #include <mutex>
 #include <vector>
@@ -49,14 +48,8 @@ class FramePool {
 
 	// Wraps an acquired set into an AVFrame owning it: on av_frame_free the
 	// set returns to the pool. Returns nullptr on alloc failure (the set is
-	// recycled). Caller fills pts and color fields (see ApplyColorimetry).
+	// recycled). Caller fills pts and color fields.
 	AVFrame *WrapFrame(FrameSet *set);
-
-	// Maps sequence-header colorimetry onto the AVFrame color fields the
-	// renderer/pacer read. All-zero bits are what today's encoder always
-	// sends (it never sets them); trust protocol-negotiated HDR instead when
-	// forceHdr is set.
-	static void ApplyColorimetry(AVFrame *frame, const SequenceColorimetry &col, bool forceHdr);
 
 	int Width() const { return m_width; }
 	int Height() const { return m_height; }

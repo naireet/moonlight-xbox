@@ -105,31 +105,5 @@ AVFrame *FramePool::WrapFrame(FrameSet *set) {
 	return frame;
 }
 
-void FramePool::ApplyColorimetry(AVFrame *frame, const SequenceColorimetry &col, bool forceHdr) {
-	// Enum values per pyrowave_common.hpp: primaries/transform BT709=0,
-	// BT2020=1; transfer SDR=0, PQ=1; range FULL=0, LIMITED=1.
-	//
-	// Today's pyrowave encoder never sets these bits (packetize()
-	// zero-inits them), so all-zero is "no information", not "full-range
-	// BT.709": default to limited range (video convention; measured true
-	// for Andy's Sunshine encode, which is currently BT.601 limited — see
-	// docs/pyrowave-decoder-notes.md). The M4 live shim should override
-	// these fields from the protocol-negotiated stream config instead,
-	// exactly like the FFmpeg path does.
-	bool bt2020 = col.valid && col.colorPrimaries != 0;
-	bool pq = col.valid && col.transferFunction != 0;
-
-	if (forceHdr && !pq) {
-		bt2020 = pq = true;
-	}
-
-	frame->color_primaries = bt2020 ? AVCOL_PRI_BT2020 : AVCOL_PRI_BT709;
-	frame->color_trc = pq ? AVCOL_TRC_SMPTE2084 : AVCOL_TRC_BT709;
-	frame->colorspace = (col.valid && col.ycbcrTransform != 0) || (forceHdr && !pq)
-	                        ? AVCOL_SPC_BT2020_NCL
-	                        : AVCOL_SPC_BT709;
-	frame->color_range = AVCOL_RANGE_MPEG; // limited until real signaling exists
-}
-
 } // namespace PyroWaveD3D11
 } // namespace moonlight_xbox_dx

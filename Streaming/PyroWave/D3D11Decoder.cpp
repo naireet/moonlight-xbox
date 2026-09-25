@@ -334,13 +334,6 @@ bool Decoder::PushPacket(const void *data_, size_t size, bool allowTruncated) {
 					return false;
 				}
 				m_totalBlocksInSequence = (int)seq->total_blocks;
-
-				m_colorimetry.colorPrimaries = seq->color_primaries;
-				m_colorimetry.transferFunction = seq->transfer_function;
-				m_colorimetry.ycbcrTransform = seq->ycbcr_transform;
-				m_colorimetry.ycbcrRange = seq->ycbcr_range;
-				m_colorimetry.chromaSiting = seq->chroma_siting;
-				m_colorimetry.valid = true;
 			} else {
 				Utils::Logf("PyroWave: unrecognized sequence header mode %u\n", seq->code);
 				return false;

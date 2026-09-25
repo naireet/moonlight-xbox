@@ -41,17 +41,6 @@ struct BitstreamSequenceHeader {
 };
 static_assert(sizeof(BitstreamSequenceHeader) == 8, "BitstreamSequenceHeader is not 8 bytes.");
 
-// Colorimetry parsed from the most recent sequence header (enum values match
-// pyrowave_common.hpp: BT709=0/BT2020=1, SDR=0/PQ=1, full=0/limited=1).
-struct SequenceColorimetry {
-	int colorPrimaries = 0;
-	int transferFunction = 0;
-	int ycbcrTransform = 0;
-	int ycbcrRange = 0;
-	int chromaSiting = 0;
-	bool valid = false;
-};
-
 class Decoder {
   public:
 	// chroma444: true for 4:4:4 streams (all our targets), false for 4:2:0.
@@ -84,10 +73,6 @@ class Decoder {
 	// is ready. Call on the immediate context under the same lock as
 	// Decode(). Disjoint results (GPU clock changed) are consumed silently.
 	bool PollGpuTimeMs(ID3D11DeviceContext *ctx, double *outMs);
-
-	const SequenceColorimetry &Colorimetry() const {
-		return m_colorimetry;
-	}
 
 	// Blocks decoded so far vs the transmitted count from the sequence header.
 	// Their ratio is how much of a partial frame actually arrived (used to name
@@ -190,7 +175,6 @@ class Decoder {
 	int m_width = 0, m_height = 0;
 	int m_alignedWidth = 0, m_alignedHeight = 0;
 	bool m_chroma444 = true;
-	SequenceColorimetry m_colorimetry;
 };
 
 } // namespace PyroWaveD3D11
