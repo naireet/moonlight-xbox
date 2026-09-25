@@ -53,9 +53,6 @@ class Decoder {
 	// Non-blocking: GPU time of some recent decode, when one has completed.
 	bool PollGpuTimeMs(double *outMs);
 
-	int DecodedBlocks() const;
-	int TotalBlocksInSequence() const;
-
   private:
 	bool OpenPlanes(PyroWaveD3D11::FrameSet *set);
 

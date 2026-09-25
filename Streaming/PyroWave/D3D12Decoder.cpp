@@ -187,18 +187,6 @@ void Decoder::Clear() {
 	pyrowave_d3d12_decoder_clear(m_pwDecoder);
 }
 
-int Decoder::DecodedBlocks() const {
-	int decoded = 0;
-	pyrowave_d3d12_decoder_get_block_counts(m_pwDecoder, &decoded, nullptr);
-	return decoded;
-}
-
-int Decoder::TotalBlocksInSequence() const {
-	int total = 0;
-	pyrowave_d3d12_decoder_get_block_counts(m_pwDecoder, nullptr, &total);
-	return total;
-}
-
 bool Decoder::Decode(ID3D11DeviceContext *context11, PyroWaveD3D11::FrameSet *set) {
 	if (!OpenPlanes(set))
 		return false;

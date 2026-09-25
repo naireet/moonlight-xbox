@@ -51,15 +51,9 @@ class PyroWaveDecoder {
 	int videoFormat = 0;
 	int width = 0, height = 0;
 
-	// For debugging, this value can be set to save the first few partial frames
-	// for later analysis with python3 tools/pyrowave_preview.py <capture>.bin
-	static constexpr int kPartialCapturesPerStream = 0;
-
   private:
-	// lostPercent < 0 marks a complete capture; >= 0 a partial one, tagged
-	// with that percentage in the filename.
-	void WriteCaptureAsync(size_t length, int frameNumber, int lostPercent);
-	void WriteCapture(const uint8_t *data, size_t length, int frameNumber, int lostPercent);
+	void WriteCaptureAsync(size_t length, int frameNumber);
+	void WriteCapture(const uint8_t *data, size_t length, int frameNumber);
 
 	PyroWaveDecoder() = default;
 	PyroWaveDecoder(const PyroWaveDecoder &) = delete;
@@ -79,8 +73,6 @@ class PyroWaveDecoder {
 	bool BackendPushPacket(const void *data, size_t size, bool allowTruncated = false);
 	bool BackendDecodeIsReady(bool allowPartialFrame);
 	void BackendClear();
-	int BackendDecodedBlocks();
-	int BackendTotalBlocksInSequence();
 	std::unique_ptr<PyroWaveD3D11::FramePool> m_pool;
 	// Pools whose frames may still be in flight when a new session starts;
 	// freed on the next Init (Pacer has long since drained them by then).
@@ -93,9 +85,6 @@ class PyroWaveDecoder {
 
 	// Armed from the UI thread, consumed on the VideoDec thread.
 	std::atomic<int> m_captureFramesRemaining {0};
-	// Auto-armed at stream start; only touched on the VideoDec thread but kept
-	// atomic for symmetry with the manual counter.
-	std::atomic<int> m_partialCapturesRemaining {0};
 };
 
 } // namespace moonlight_xbox_dx

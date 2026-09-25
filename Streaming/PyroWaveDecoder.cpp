@@ -35,8 +35,6 @@ int PyroWaveDecoder::Init(int videoFormat_, int width_, int height_, int redrawR
 	m_StreamEpochQpc = 0;
 	// Don't let a capture armed at the end of one session fire in the next.
 	m_captureFramesRemaining.store(0, std::memory_order_relaxed);
-	// Auto-save the first few partial frames each stream for offline review.
-	m_partialCapturesRemaining.store(kPartialCapturesPerStream, std::memory_order_relaxed);
 
 	m_retiredPools.clear();
 
@@ -139,13 +137,13 @@ int PyroWaveDecoder::CaptureFrames(int count) {
 // Copies the DU and writes it on a background task; storage I/O on the decode
 // thread would stall it long enough to drop frames, and the resulting loss
 // would change what the capture is trying to study.
-void PyroWaveDecoder::WriteCaptureAsync(size_t length, int frameNumber, int lostPercent) {
+void PyroWaveDecoder::WriteCaptureAsync(size_t length, int frameNumber) {
 	auto copy = std::make_shared<std::vector<uint8_t>>(m_duBuffer.begin(), m_duBuffer.begin() + length);
-	Concurrency::create_task([this, copy, frameNumber, lostPercent] {
+	Concurrency::create_task([this, copy, frameNumber] {
 		// An exception escaping a discarded task takes the process down at
 		// task destruction, and this one touches WinRT storage APIs.
 		try {
-			WriteCapture(copy->data(), copy->size(), frameNumber, lostPercent);
+			WriteCapture(copy->data(), copy->size(), frameNumber);
 		}
 		catch (...) {
 			Utils::Log("PyroWave capture: write failed\n");
@@ -155,15 +153,12 @@ void PyroWaveDecoder::WriteCaptureAsync(size_t length, int frameNumber, int lost
 
 // Writes one decode unit to LocalState, verbatim, under a name that says what
 // it holds: pyrowave_<W>x<H>_<chroma>_<depth>_<hdr|sdr>_f<frame>_<timestamp>.bin
-// Automatic partial-frame captures insert "lost<NN>" before the timestamp: the
-// percentage of the frame's transmitted blocks that never arrived.
 //
 // The file is exactly what the host framed and what the offline tools parse, so
 // build_tools/pyrowave_dump_golden and tools/pyrowave_{loss,fec,tier}_sim.py all
-// read it directly (partial captures need --allow-partial / --force-partial).
-// The name is for humans only - every tool recovers the real geometry from the
-// bitstream sequence header.
-void PyroWaveDecoder::WriteCapture(const uint8_t *data, size_t length, int frameNumber, int lostPercent) {
+// read it directly. The name is for humans only - every tool recovers the real
+// geometry from the bitstream sequence header.
+void PyroWaveDecoder::WriteCapture(const uint8_t *data, size_t length, int frameNumber) {
 	// LocalFolder->Path is stable for the process; resolving it per frame would
 	// put WinRT calls on the decode thread for no reason.
 	static std::string folder = [] {
@@ -186,17 +181,13 @@ void PyroWaveDecoder::WriteCapture(const uint8_t *data, size_t length, int frame
 	SYSTEMTIME now;
 	GetLocalTime(&now);
 
-	char lostTag[16] = "";
-	if (lostPercent >= 0)
-		sprintf_s(lostTag, "lost%02d_", lostPercent);
-
 	char name[2048];
-	sprintf_s(name, "%spyrowave_%dx%d_%s_%s_%s_f%05d_%s%04d%02d%02d-%02d%02d%02d.bin",
+	sprintf_s(name, "%spyrowave_%dx%d_%s_%s_%s_f%05d_%04d%02d%02d-%02d%02d%02d.bin",
 	          folder.c_str(), width, height,
 	          chroma444 ? "444" : "420",
 	          tenBit ? "10bit" : "8bit",
 	          hdr ? "hdr" : "sdr",
-	          frameNumber, lostTag,
+	          frameNumber,
 	          now.wYear, now.wMonth, now.wDay, now.wHour, now.wMinute, now.wSecond);
 
 	FILE *f = nullptr;
@@ -267,7 +258,7 @@ int PyroWaveDecoder::SubmitDecodeUnit(PDECODE_UNIT decodeUnit) {
 	// rest of the burst captures.
 	if (!partial && m_captureFramesRemaining.load(std::memory_order_relaxed) > 0) {
 		m_captureFramesRemaining.fetch_sub(1, std::memory_order_relaxed);
-		WriteCaptureAsync(length, decodeUnit->frameNumber, -1);
+		WriteCaptureAsync(length, decodeUnit->frameNumber);
 	}
 
 	// Strip the transport framing: [u32 count]{[u32 size][bytes]}*.
@@ -309,20 +300,6 @@ int PyroWaveDecoder::SubmitDecodeUnit(PDECODE_UNIT decodeUnit) {
 			Utils::Logf("PyroWave live: frame %d not decodable, dropping\n", decodeUnit->frameNumber);
 		BackendClear();
 		return DR_OK;
-	}
-
-	// Auto-save the first few partial frames that made it past the quality
-	// floor (i.e. the ones that will actually render), so how they looked can
-	// be reviewed offline after the session. The filename records how much of
-	// the frame was lost, measured in transmitted blocks: the sequence header
-	// says how many the host sent, the decoder counted how many arrived.
-	if (partial && m_partialCapturesRemaining.load(std::memory_order_relaxed) > 0) {
-		m_partialCapturesRemaining.fetch_sub(1, std::memory_order_relaxed);
-		int totalBlocks = BackendTotalBlocksInSequence();
-		int lostPercent = totalBlocks > 0
-		    ? 100 - (100 * BackendDecodedBlocks()) / totalBlocks
-		    : 0;
-		WriteCaptureAsync(length, decodeUnit->frameNumber, lostPercent);
 	}
 
 	PyroWaveD3D11::FrameSet *set = m_pool->Acquire();
@@ -399,14 +376,6 @@ void PyroWaveDecoder::BackendClear() {
 		m_decoder12->Clear();
 	else if (m_decoder)
 		m_decoder->Clear();
-}
-
-int PyroWaveDecoder::BackendDecodedBlocks() {
-	return m_decoder12 ? m_decoder12->DecodedBlocks() : m_decoder->DecodedBlocks();
-}
-
-int PyroWaveDecoder::BackendTotalBlocksInSequence() {
-	return m_decoder12 ? m_decoder12->TotalBlocksInSequence() : m_decoder->TotalBlocksInSequence();
 }
 
 } // namespace moonlight_xbox_dx

@@ -74,12 +74,6 @@ class Decoder {
 	// Decode(). Disjoint results (GPU clock changed) are consumed silently.
 	bool PollGpuTimeMs(ID3D11DeviceContext *ctx, double *outMs);
 
-	// Blocks decoded so far vs the transmitted count from the sequence header.
-	// Their ratio is how much of a partial frame actually arrived (used to name
-	// the automatic partial-frame captures).
-	int DecodedBlocks() const { return m_decodedBlocks; }
-	int TotalBlocksInSequence() const { return m_totalBlocksInSequence; }
-
   private:
 	static constexpr int kLevels = 5;          // DecompositionLevels
 	static constexpr int kComponents = 3;      // NumComponents
