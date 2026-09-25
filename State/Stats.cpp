@@ -9,6 +9,8 @@
 
 using namespace moonlight_xbox_dx;
 
+static const char *CodecString(int videoFormat);
+
 Stats& Stats::instance()
 {
 	static Stats inst;
@@ -70,8 +72,8 @@ bool Stats::ShouldUpdateDisplay(DX::StepTimer const& timer, bool isVisible, char
 				formatVideoStats(timer, lastTwoWndStats, text, sizeof(text));
 				SYSTEMTIME now;
 				GetLocalTime(&now);
-				fprintf(m_logFile, "--- %02d:%02d:%02d t=%.0f s\n%s\n", now.wHour, now.wMinute, now.wSecond,
-				        timer.GetTotalSeconds(), text);
+				fprintf(m_logFile, "--- %02d:%02d:%02d t=%.0f s, %s\n%s\n", now.wHour, now.wMinute, now.wSecond,
+				        timer.GetTotalSeconds(), StreamInfo().c_str(), text);
 				fflush(m_logFile);
 				m_logTimer = timer;
 				m_logHasTimer = true;
@@ -164,11 +166,11 @@ void Stats::BeginFileLog(StreamConfiguration ^ config) {
 	           now.wHour, now.wMinute, now.wSecond);
 	std::wstring path = std::wstring(Windows::Storage::ApplicationData::Current->LocalFolder->Path->Data()) + name;
 	char header[512];
-	sprintf_s(header, "Moonlight stream stats %04d-%02d-%02d %02d:%02d:%02d\nHost %s, app %s\nRequested %dx%d@%d, %d Kbps, codec %s, HDR %s, packet size %d, frame pacing %s\n\n",
+	sprintf_s(header, "Moonlight stream stats %04d-%02d-%02d %02d:%02d:%02d\nHost %s, app %s\nRequested %dx%d@%d, %d Kbps (PyroWave setting %d Kbps), codec %s, HDR %s, packet size %d, frame pacing %s\n\n",
 	          now.wYear, now.wMonth, now.wDay, now.wHour, now.wMinute, now.wSecond,
 	          Utils::PlatformStringToStdString(config->hostname).c_str(),
 	          Utils::PlatformStringToStdString(config->appName).c_str(),
-	          config->width, config->height, config->FPS, config->bitrate,
+	          config->width, config->height, config->FPS, config->bitrate, config->pyroWaveBitrate,
 	          Utils::PlatformStringToStdString(config->videoCodec).c_str(),
 	          config->enableHDR ? "on" : "off", config->packetSize,
 	          Utils::PlatformStringToStdString(config->framePacing).c_str());
@@ -203,10 +205,27 @@ void Stats::EndFileLog() {
 			sprintf_s(line, "Bitrate: %.1f Mbps average over %.0f s", double(m_GlobalVideoStats.receivedBytes) * 8.0 / seconds / 1e6, seconds);
 			summary.replace(begin, (end == std::string::npos ? summary.size() : end) - begin, line);
 		}
-		fprintf(m_logFile, "=== Whole stream ===\n%s\n", summary.c_str());
+		fprintf(m_logFile, "=== Whole stream === %s\n%s\n", StreamInfo().c_str(), summary.c_str());
 	}
 	fclose(m_logFile);
 	m_logFile = nullptr;
+}
+
+void Stats::SetRequestedBitrate(int kbps, bool pyroWaveSetting) {
+	std::lock_guard<std::mutex> lock(m_mutex);
+	m_requestedBitrateKbps = kbps;
+	m_requestedPyroWaveBitrate = pyroWaveSetting;
+}
+
+// "codec <negotiated codec>, bitrate <N> Kbps (<which> setting)" for the stream stats log.
+// Caller holds m_mutex.
+std::string Stats::StreamInfo() {
+	PyroWaveDecoder &pyrowave = PyroWaveDecoder::instance();
+	int videoFormat = pyrowave.IsActive() ? pyrowave.videoFormat : FFMpegDecoder::instance().videoFormat;
+	char info[160];
+	sprintf_s(info, "codec %s (0x%04x), bitrate %d Kbps (%s setting)", CodecString(videoFormat), videoFormat,
+	          m_requestedBitrateKbps, m_requestedPyroWaveBitrate ? "PyroWave" : "standard");
+	return info;
 }
 
 void Stats::ResetAudioGlitchCount() {
@@ -339,20 +358,9 @@ void Stats::addVideoStats(DX::StepTimer const& timer, VIDEO_STATS& src, VIDEO_ST
 	dst.renderedFps = (double)dst.renderedFrames / (now - dst.measurementStartTimestamp);
 }
 
-void Stats::formatVideoStats(DX::StepTimer const &timer, VIDEO_STATS &stats, char *output, size_t length) {
-	FFMpegDecoder &ffmpeg = FFMpegDecoder::instance();
-	PyroWaveDecoder &pyrowave = PyroWaveDecoder::instance();
-
-	int videoFormat = pyrowave.IsActive() ? pyrowave.videoFormat : ffmpeg.videoFormat;
-	int videoWidth = pyrowave.IsActive() ? pyrowave.width : ffmpeg.width;
-	int videoHeight = pyrowave.IsActive() ? pyrowave.height : ffmpeg.height;
-
-	int offset = 0;
+// Display name of a negotiated VIDEO_FORMAT_*; HDR/SDR follows the host's current mode.
+static const char *CodecString(int videoFormat) {
 	const char *codecString;
-	int ret = -1;
-
-	// Start with an empty string
-	output[offset] = 0;
 
 	switch (videoFormat) {
 	case VIDEO_FORMAT_H264:
@@ -441,6 +449,25 @@ void Stats::formatVideoStats(DX::StepTimer const &timer, VIDEO_STATS &stats, cha
 		codecString = "UNKNOWN";
 		break;
 	}
+	return codecString;
+}
+
+void Stats::formatVideoStats(DX::StepTimer const &timer, VIDEO_STATS &stats, char *output, size_t length) {
+	FFMpegDecoder &ffmpeg = FFMpegDecoder::instance();
+	PyroWaveDecoder &pyrowave = PyroWaveDecoder::instance();
+
+	int videoFormat = pyrowave.IsActive() ? pyrowave.videoFormat : ffmpeg.videoFormat;
+	int videoWidth = pyrowave.IsActive() ? pyrowave.width : ffmpeg.width;
+	int videoHeight = pyrowave.IsActive() ? pyrowave.height : ffmpeg.height;
+
+	int offset = 0;
+	const char *codecString;
+	int ret = -1;
+
+	// Start with an empty string
+	output[offset] = 0;
+
+	codecString = CodecString(videoFormat);
 
 	if (stats.receivedFps > 0) {
 		ret = snprintf(&output[offset],

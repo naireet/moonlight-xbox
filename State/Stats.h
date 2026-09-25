@@ -87,10 +87,15 @@ namespace moonlight_xbox_dx
 		void BeginFileLog(StreamConfiguration ^ config);
 		void EndFileLog();
 
+		// The bitrate actually put in STREAM_CONFIGURATION, and whether it came from the
+		// PyroWave setting; recorded in the stream stats log. Set once per stream.
+		void SetRequestedBitrate(int kbps, bool pyroWaveSetting);
+
 	private:
 		Stats();
 		Stats(const Stats&) = delete;
 		Stats& operator=(const Stats&) = delete;
+		std::string StreamInfo();
 
 		void addVideoStats(DX::StepTimer const& timer, VIDEO_STATS& src, VIDEO_STATS& dst);
 		void formatVideoStats(DX::StepTimer const& timer, VIDEO_STATS& stats, char* output, size_t length);
@@ -110,5 +115,7 @@ namespace moonlight_xbox_dx
 		FILE*                                m_logFile = nullptr;
 		DX::StepTimer                        m_logTimer; // last timer a block was written with
 		bool                                 m_logHasTimer = false;
+		int                                  m_requestedBitrateKbps = 0;
+		bool                                 m_requestedPyroWaveBitrate = false;
 	};
 }

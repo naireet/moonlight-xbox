@@ -15,6 +15,7 @@ extern "C" {
 #include <gamingdeviceinformation.h>
 #include "Streaming\FFMpegDecoder.h"
 #include "Streaming\PyroWaveDecoder.h"
+#include "State\Stats.h"
 
 using namespace moonlight_xbox_dx;
 using namespace Windows::Gaming::Input;
@@ -313,6 +314,7 @@ int MoonlightClient::StartStreaming(std::shared_ptr<DX::DeviceResources> res, St
 	bool pyrowaveNegotiable = (config.supportedVideoFormats & VIDEO_FORMAT_MASK_PYROWAVE) &&
 	                          (serverData.serverInfo.serverCodecModeSupport & SCM_PYROWAVE);
 	config.bitrate = pyrowaveNegotiable ? sConfig->pyroWaveBitrate : sConfig->bitrate;
+	Stats::instance().SetRequestedBitrate(config.bitrate, pyrowaveNegotiable);
 	if ((pyrowave420 || pyrowave444) && !pyrowaveNegotiable) {
 		Utils::Log("PyroWave selected but the host does not support it; using the standard bitrate\n");
 	}
