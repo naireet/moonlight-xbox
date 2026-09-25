@@ -339,9 +339,9 @@ void Stats::addVideoStats(DX::StepTimer const& timer, VIDEO_STATS& src, VIDEO_ST
 	dst.renderedFps = (double)dst.renderedFrames / (now - dst.measurementStartTimestamp);
 }
 
-void Stats::formatVideoStats(DX::StepTimer const& timer, VIDEO_STATS& stats, char* output, size_t length) {
-	FFMpegDecoder& ffmpeg = FFMpegDecoder::instance();
-	PyroWaveDecoder& pyrowave = PyroWaveDecoder::instance();
+void Stats::formatVideoStats(DX::StepTimer const &timer, VIDEO_STATS &stats, char *output, size_t length) {
+	FFMpegDecoder &ffmpeg = FFMpegDecoder::instance();
+	PyroWaveDecoder &pyrowave = PyroWaveDecoder::instance();
 
 	int videoFormat = pyrowave.IsActive() ? pyrowave.videoFormat : ffmpeg.videoFormat;
 	int videoWidth = pyrowave.IsActive() ? pyrowave.width : ffmpeg.width;
@@ -354,8 +354,7 @@ void Stats::formatVideoStats(DX::StepTimer const& timer, VIDEO_STATS& stats, cha
 	// Start with an empty string
 	output[offset] = 0;
 
-	switch (videoFormat)
-	{
+	switch (videoFormat) {
 	case VIDEO_FORMAT_H264:
 		codecString = "H.264";
 		break;
@@ -445,12 +444,12 @@ void Stats::formatVideoStats(DX::StepTimer const& timer, VIDEO_STATS& stats, cha
 
 	if (stats.receivedFps > 0) {
 		ret = snprintf(&output[offset],
-						length - offset,
-						"Video stream: %dx%d %.2f FPS (%s)\n",
-						videoWidth,
-						videoHeight,
-						stats.totalFps,
-						codecString);
+		               length - offset,
+		               "Video stream: %dx%d %.2f FPS (%s)\n",
+		               videoWidth,
+		               videoHeight,
+		               stats.totalFps,
+		               codecString);
 		if (ret < 0 || (size_t)ret >= (length - offset)) {
 			Utils::Log("Error: stringifyVideoStats length overflow\n");
 			return;
