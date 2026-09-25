@@ -41,14 +41,6 @@ class PyroWaveDecoder {
 
 	bool IsActive() const { return m_active; }
 
-	// True when the D3D12 (Shader Model 6.4 wave op) decoder is in use rather than
-	// the D3D11 fallback. Decided per stream in Init().
-	bool UsingD3D12() const { return m_decoder12 != nullptr; }
-
-	// Try the D3D12 decoder first; the D3D11 one is used when this is false or
-	// the D3D12 path is unavailable on the device.
-	static constexpr bool kPreferD3D12 = true;
-
 	// Dev tool: arm a capture of the next few complete decode units, written to
 	// LocalState as the same [u32 count]{[u32 size][bytes]}* framing the host
 	// sent. Those files feed tools/pyrowave_dump_golden and the loss/FEC sims.

@@ -80,9 +80,6 @@ class Decoder {
 	int DecodedBlocks() const { return m_decodedBlocks; }
 	int TotalBlocksInSequence() const { return m_totalBlocksInSequence; }
 
-	int AlignedWidth() const { return m_alignedWidth; }
-	int AlignedHeight() const { return m_alignedHeight; }
-
   private:
 	static constexpr int kLevels = 5;          // DecompositionLevels
 	static constexpr int kComponents = 3;      // NumComponents

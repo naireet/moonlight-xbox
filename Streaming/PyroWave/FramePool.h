@@ -51,10 +51,6 @@ class FramePool {
 	// recycled). Caller fills pts and color fields.
 	AVFrame *WrapFrame(FrameSet *set);
 
-	int Width() const { return m_width; }
-	int Height() const { return m_height; }
-	bool Chroma444() const { return m_chroma444; }
-
   private:
 	friend struct FrameSet;
 	static void FreeCallback(void *opaque, uint8_t *data);

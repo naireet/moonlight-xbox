@@ -50,13 +50,13 @@ int PyroWaveDecoder::Init(int videoFormat_, int width_, int height_, int redrawR
 
 	m_decoder.reset();
 	m_decoder12.reset();
-	if (kPreferD3D12) {
-		auto decoder12 = std::make_unique<PyroWaveD3D12::Decoder>();
-		if (decoder12->Init(device, m_deviceResources->GetD3DDeviceContext(), width, height, chroma444, poolSize))
-			m_decoder12 = std::move(decoder12);
-		else
-			Utils::Log("PyroWave live: D3D12 decoder unavailable, falling back to D3D11\n");
-	}
+	// Prefer the D3D12 decoder (SM 6.4 wave ops); fall back to the D3D11 one
+	// when D3D12, SM 6.4 or D3D11 <-> D3D12 sharing is unavailable.
+	auto decoder12 = std::make_unique<PyroWaveD3D12::Decoder>();
+	if (decoder12->Init(device, m_deviceResources->GetD3DDeviceContext(), width, height, chroma444, poolSize))
+		m_decoder12 = std::move(decoder12);
+	else
+		Utils::Log("PyroWave live: D3D12 decoder unavailable, falling back to D3D11\n");
 	if (!m_decoder12) {
 		m_decoder = std::make_unique<PyroWaveD3D11::Decoder>();
 		if (!m_decoder->Init(device, width, height, chroma444)) {

@@ -12,7 +12,6 @@ extern "C" {
 #include <Limelight.h> // SCM_* server codec support bits
 }
 #include <cmath> // sqrtf, lround
-#include <algorithm> // std::min
 using namespace Windows::UI::Core;
 
 using namespace moonlight_xbox_dx;
