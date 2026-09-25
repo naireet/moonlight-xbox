@@ -565,7 +565,7 @@ void Stats::formatVideoStats(DX::StepTimer const& timer, VIDEO_STATS& stats, cha
 		               length - offset,
 		               "------\n"
 		               "Missed present rate: %.2f%%\n"
-		               "PreWait/Render: %.2f/%.2f ms\n" stats.hitDeadlines
+		               "PreWait/Render: %.2f/%.2f ms\n", stats.hitDeadlines
 		                   ? ((double)stats.missedDeadlines / (stats.missedDeadlines + stats.hitDeadlines)) * 100
 		                   : 0.0f,
 		               (double)stats.totalPreWaitTimeUs / 1000.0 / stats.renderedFrames,
