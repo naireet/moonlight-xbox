@@ -9,9 +9,10 @@ namespace moonlight_xbox_dx {
     constexpr int kPyroWaveDefaultBitrateKbps = 600000;
     constexpr int kPyroWaveMinBitrateKbps = 50000;
     constexpr int kPyroWaveMaxBitrateKbps = 1000000;
-    // Series X has 1 GbE. With ~7.2% per-packet wire overhead and 20% host FEC,
-    // anything above this leaves no headroom on the link.
-    constexpr int kPyroWaveGigabitWarnBitrateKbps = 650000;
+    // Series X has 1 GbE. Assumes 0% host FEC (the wired setup): with ~7.2%
+    // per-packet wire overhead, 800 Mbps is ~858 Mbps on the wire (86%) and the
+    // hard ceiling is ~933 Mbps. Any host FEC lowers the safe value.
+    constexpr int kPyroWaveGigabitWarnBitrateKbps = 800000;
 
     inline bool IsPyroWaveCodec(Platform::String ^ codec) {
         return codec == "PyroWave 4:2:0" || codec == "PyroWave 4:4:4";

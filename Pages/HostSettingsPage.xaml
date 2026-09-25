@@ -64,7 +64,7 @@
                 <!-- Range is set from the kPyroWave* constants in the constructor -->
                 <Slider x:Name="PyroWaveBitrateSlider" Visibility="Collapsed" Value="{x:Bind Host.PyroWaveBitrate}" x:DefaultBindMode="TwoWay" SmallChange="10000" TickFrequency="50000" StepFrequency="10000" ValueChanged="PyroWaveBitrateSlider_ValueChanged" />
                 <TextBlock x:Name="PyroWaveBitrateWarning" Visibility="Collapsed" TextWrapping="Wrap" Foreground="Orange">
-                    Exceeds gigabit Ethernet headroom after FEC — expect packet loss.
+                    Exceeds gigabit Ethernet headroom (assumes 0% host FEC; lower if FEC is enabled) — expect packet loss.
                 </TextBlock>
             </StackPanel>
             <TextBlock Grid.Row="3" Grid.Column="0">Audio Configuration</TextBlock>
