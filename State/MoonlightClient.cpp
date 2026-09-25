@@ -216,7 +216,6 @@ int MoonlightClient::StartStreaming(std::shared_ptr<DX::DeviceResources> res, St
 	LiInitializeStreamConfiguration(&config);
 	config.width = sConfig->width;
 	config.height = sConfig->height;
-	config.bitrate = sConfig->bitrate;
 	config.fps = sConfig->FPS;
 	if (res->GetRefreshRate() > 0.0 && IsXbox()) {
 		// Pass fractional refresh rate to host in case it's supported
@@ -304,6 +303,20 @@ int MoonlightClient::StartStreaming(std::shared_ptr<DX::DeviceResources> res, St
 			config.supportedVideoFormats |= VIDEO_FORMAT_PYROWAVE10_444;
 		}
 	}
+
+	// The bitrate goes into the RTSP ANNOUNCE, before the negotiated format
+	// reaches the app, so predict the negotiation: moonlight-common-c picks
+	// PyroWave exactly when both sides support it (RtspConnection.c, on
+	// supportedVideoFormats and serverCodecModeSupport alone, from this same
+	// serverInfo). Otherwise the stream falls back to HEVC/H.264 and must use
+	// the standard bitrate.
+	bool pyrowaveNegotiable = (config.supportedVideoFormats & VIDEO_FORMAT_MASK_PYROWAVE) &&
+	                          (serverData.serverInfo.serverCodecModeSupport & SCM_PYROWAVE);
+	config.bitrate = pyrowaveNegotiable ? sConfig->pyroWaveBitrate : sConfig->bitrate;
+	if ((pyrowave420 || pyrowave444) && !pyrowaveNegotiable) {
+		Utils::Log("PyroWave selected but the host does not support it; using the standard bitrate\n");
+	}
+	Utils::Logf("Requesting %d Kbps (%s bitrate setting)\n", config.bitrate, pyrowaveNegotiable ? "PyroWave" : "standard");
 
 	config.audioConfiguration = AUDIO_CONFIGURATION_STEREO;
 	if (sConfig->audioConfig == "Surround 5.1") {
