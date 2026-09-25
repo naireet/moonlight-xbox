@@ -1,6 +1,7 @@
 #include "pch.h"
 #include <share.h>
 #include "Stats.h"
+#include "StreamConfiguration.h"
 #include "Utils.hpp"
 #include "../Plot/ImGuiPlots.h"
 #include "../Streaming/FFMpegDecoder.h"
@@ -153,8 +154,25 @@ uint32_t Stats::GetAudioGlitchCount() {
 	return m_audioGlitchCount;
 }
 
-void Stats::BeginFileLog(const std::wstring& path, const std::string& header) {
+void Stats::BeginFileLog(StreamConfiguration ^ config) {
 	EndFileLog();
+
+	SYSTEMTIME now;
+	GetLocalTime(&now);
+	wchar_t name[64];
+	swprintf_s(name, L"\\stream_stats_%04d%02d%02d-%02d%02d%02d.log", now.wYear, now.wMonth, now.wDay,
+	           now.wHour, now.wMinute, now.wSecond);
+	std::wstring path = std::wstring(Windows::Storage::ApplicationData::Current->LocalFolder->Path->Data()) + name;
+	char header[512];
+	sprintf_s(header, "Moonlight stream stats %04d-%02d-%02d %02d:%02d:%02d\nHost %s, app %s\nRequested %dx%d@%d, %d Kbps, codec %s, HDR %s, packet size %d, frame pacing %s\n\n",
+	          now.wYear, now.wMonth, now.wDay, now.wHour, now.wMinute, now.wSecond,
+	          Utils::PlatformStringToStdString(config->hostname).c_str(),
+	          Utils::PlatformStringToStdString(config->appName).c_str(),
+	          config->width, config->height, config->FPS, config->bitrate,
+	          Utils::PlatformStringToStdString(config->videoCodec).c_str(),
+	          config->enableHDR ? "on" : "off", config->packetSize,
+	          Utils::PlatformStringToStdString(config->framePacing).c_str());
+
 	std::lock_guard<std::mutex> lock(m_mutex);
 	// Deny writes only, so the log can be read while the stream is still running.
 	m_logFile = _wfsopen(path.c_str(), L"wb", _SH_DENYWR);
@@ -162,7 +180,7 @@ void Stats::BeginFileLog(const std::wstring& path, const std::string& header) {
 		Utils::Log("Stats: could not open the stream stats log\n");
 		return;
 	}
-	fputs(header.c_str(), m_logFile);
+	fputs(header, m_logFile);
 	fflush(m_logFile);
 	m_logHasTimer = false;
 }

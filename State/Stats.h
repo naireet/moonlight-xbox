@@ -55,6 +55,8 @@ typedef struct _VIDEO_STATS {
 
 namespace moonlight_xbox_dx
 {
+	ref class StreamConfiguration;
+
 	class Stats
 	{
 	public:
@@ -78,9 +80,11 @@ namespace moonlight_xbox_dx
 		uint32_t GetAudioGlitchCount();
 		void ResetAudioGlitchCount();
 
-		// Stream stats log (host setting "Log stream stats"): the overlay text once a
-		// second, whether or not the overlay is shown, then the whole-stream totals.
-		void BeginFileLog(const std::wstring& path, const std::string& header);
+		// Stream stats log (host setting "Log stream stats"): writes
+		// LocalState\stream_stats_<timestamp>.log with the stream config, the
+		// overlay text once a second whether or not the overlay is shown, then
+		// the whole-stream totals.
+		void BeginFileLog(StreamConfiguration ^ config);
 		void EndFileLog();
 
 	private:

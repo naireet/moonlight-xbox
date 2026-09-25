@@ -149,22 +149,7 @@ moonlight_xbox_dxMain::moonlight_xbox_dxMain(const std::shared_ptr<DX::DeviceRes
 	Stats::instance().Reset();
 
 	if (configuration->logStats) {
-		SYSTEMTIME now;
-		GetLocalTime(&now);
-		wchar_t name[64];
-		swprintf_s(name, L"\\stream_stats_%04d%02d%02d-%02d%02d%02d.log", now.wYear, now.wMonth, now.wDay,
-		           now.wHour, now.wMinute, now.wSecond);
-		std::wstring path = std::wstring(Windows::Storage::ApplicationData::Current->LocalFolder->Path->Data()) + name;
-		char header[512];
-		sprintf_s(header, "Moonlight stream stats %04d-%02d-%02d %02d:%02d:%02d\nHost %s, app %s\nRequested %dx%d@%d, %d Kbps, codec %s, HDR %s, packet size %d, frame pacing %s\n\n",
-		          now.wYear, now.wMonth, now.wDay, now.wHour, now.wMinute, now.wSecond,
-		          Utils::PlatformStringToStdString(configuration->hostname).c_str(),
-		          Utils::PlatformStringToStdString(configuration->appName).c_str(),
-		          configuration->width, configuration->height, configuration->FPS, configuration->bitrate,
-		          Utils::PlatformStringToStdString(configuration->videoCodec).c_str(),
-		          configuration->enableHDR ? "on" : "off", configuration->packetSize,
-		          Utils::PlatformStringToStdString(configuration->framePacing).c_str());
-		Stats::instance().BeginFileLog(path, header);
+		Stats::instance().BeginFileLog(configuration);
 	}
 
 	// We're now connected and can register for gamepad events
