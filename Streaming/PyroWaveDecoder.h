@@ -5,9 +5,9 @@
 // the negotiated format has VIDEO_FORMAT_MASK_PYROWAVE set. Each decode unit
 // carries one frame framed as [u32 count]{[u32 size][bytes]}*; the shim
 // strips that transport framing, feeds the raw self-delimiting packets to
-// PyroWaveD3D11::Decoder, decodes into FramePool planes and hands the
-// wrapped AVFrame to Pacer (which owns it from then on; the pool recycles
-// plane sets via the AVFrame free callback).
+// the D3D12 decoder (or the D3D11 fallback), decodes into FramePool planes
+// and hands the wrapped AVFrame to Pacer (which owns it from then on; the
+// pool recycles plane sets via the AVFrame free callback).
 
 #include "PyroWave\D3D11Decoder.h"
 #include "PyroWave\D3D12Decoder.h"

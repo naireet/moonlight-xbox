@@ -2,11 +2,11 @@
 
 // Pool of PyroWave output frames: N sets of 3 R16_UNORM plane textures
 // (Y, Cb, Cr; chroma is full-res for 4:4:4, quarter-res for 4:2:0), each
-// with an SRV for rendering and a TEXTURE2DARRAY UAV for
-// D3D11Decoder::Decode.
+// with an SRV for rendering and a TEXTURE2DARRAY UAV for the D3D11
+// decoder. Created shared, the D3D12 decoder writes them instead.
 //
-// Frames travel through the existing pipeline as AVFrame (see
-// docs/pyrowave-integration.md): data[0..2] = ID3D11Texture2D* planes,
+// Frames travel through the existing pipeline as AVFrame: data[0..2] =
+// ID3D11Texture2D* planes,
 // data[3] = FrameSet*, format = AV_PIX_FMT_YUV444P16 / AV_PIX_FMT_YUV420P16
 // (the PyroWave sentinels — nothing else in this app produces them; they
 // also drive the renderer's 16-bit CSC scaling and chroma cositing). buf[0]

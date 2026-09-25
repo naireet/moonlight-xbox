@@ -148,9 +148,10 @@ bool VideoRenderer::Render(AVFrame *frame) {
 
 	// Bind SRVs for this frame and draw
 	if (isPyroWave) {
-		// PyroWave planes are sampled in place: the decoder and renderer share
-		// the immediate context, so the decode dispatches are ordered before
-		// this draw and the pool recycles sets only via av_frame_free.
+		// PyroWave planes are sampled in place. Both backends order the decode
+		// before this draw on the immediate context (D3D11: same-context
+		// dispatches; D3D12: a shared-fence Wait queued by Decode()), and the
+		// pool recycles sets only via av_frame_free.
 		auto *set = reinterpret_cast<PyroWaveD3D11::FrameSet *>(frame->data[3]);
 		ID3D11ShaderResourceView *frameSrvs[] = { set->srv[0].Get(), set->srv[1].Get(), set->srv[2].Get() };
 		ctx->PSSetShaderResources(0, 3, frameSrvs);

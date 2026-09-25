@@ -3,8 +3,8 @@
 // D3D11 port of PyroWave::Decoder (third_party/pyrowave, MIT).
 // CPU bitstream handling is ported near-verbatim from pyrowave_decoder.cpp /
 // pyrowave_common.cpp; the GPU layer maps Granite/Vulkan onto D3D11 compute.
-// See docs/pyrowave-decoder-notes.md for the full mapping, including why the
-// wavelet storage is 5 per-level textures here instead of one mipped image.
+// Wavelet storage is 5 per-level textures instead of upstream's single mipped
+// image (see CreateResources for why).
 
 #include <cstdint>
 #include <d3d11.h>

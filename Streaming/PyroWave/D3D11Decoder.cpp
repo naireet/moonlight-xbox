@@ -114,7 +114,7 @@ void Decoder::InitBlockMeta() {
 
 		// Block ids are assigned coarsest level first, so everything below
 		// this bound is levels 4..3 — the blocks whose loss is catastrophic
-		// rather than blurry (see docs/pyrowave-partial-du-design.md).
+		// rather than blurry (see DecodeIsReady).
 		if (level == kLevels - 2)
 			m_coarseBlockEnd = m_blockCount32x32;
 	}
@@ -133,7 +133,7 @@ bool Decoder::CreateResources(ID3D11Device *device) {
 
 	// Wavelet band textures: one per level (instead of upstream's single
 	// mipped image) so iDWT's read (level L) and write (level L-1) never
-	// touch the same D3D11 resource. See docs/pyrowave-decoder-notes.md.
+	// touch the same D3D11 resource.
 	for (int level = 0; level < kLevels; level++) {
 		D3D11_TEXTURE2D_DESC desc = {};
 		desc.Width = LevelWidth(level);
@@ -414,7 +414,7 @@ bool Decoder::DecodeIsReady(bool allowPartialFrame) const {
 	// Partial frames are worth showing as long as the coarse levels (4 and 3)
 	// are fully present: the image degrades to blur, never to garbage. A
 	// prefix carrying only ~20% of the frame's bytes decodes at ~37 dB on
-	// real game content (docs/pyrowave-partial-du-design.md), which upstream's
+	// real game content, which upstream's
 	// ">half the blocks" rule would have rejected.
 	//
 	// Coverage cannot be counted directly — only blocks with data are
