@@ -37,6 +37,7 @@ Concurrency::task<void> moonlight_xbox_dx::ApplicationState::Init()
 						h->Resolution = ref new ScreenResolution(a["width"], a["height"]);
 					}
 					if (a.contains("bitrate"))h->Bitrate = a["bitrate"];
+					if (a.contains("pyrowave_bitrate"))h->PyroWaveBitrate = std::max(kPyroWaveMinBitrateKbps, std::min(a["pyrowave_bitrate"].get<int>(), kPyroWaveMaxBitrateKbps));
 					if (a.contains("fps"))h->FPS = a["fps"];
 					if (a.contains("audioConfig"))h->AudioConfig = Utils::StringFromStdString(a["audioConfig"].get<std::string>());
 					if (a.contains("videoCodec"))h->VideoCodec = Utils::StringFromStdString(a["videoCodec"].get<std::string>());
@@ -101,6 +102,7 @@ Concurrency::task<void> moonlight_xbox_dx::ApplicationState::UpdateFile()
 			hostJson["width"] = host->Resolution->Width;
 			hostJson["height"] = host->Resolution->Height;
 			hostJson["bitrate"] = host->Bitrate;
+			hostJson["pyrowave_bitrate"] = host->PyroWaveBitrate;
 			hostJson["fps"] = host->FPS;
 			hostJson["audioConfig"] = Utils::PlatformStringToStdString(host->AudioConfig);
 			hostJson["videoCodec"] = Utils::PlatformStringToStdString(host->VideoCodec);

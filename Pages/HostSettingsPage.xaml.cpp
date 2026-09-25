@@ -32,6 +32,8 @@ using namespace Windows::UI::ViewManagement::Core;
 HostSettingsPage::HostSettingsPage()
 {
 	InitializeComponent();
+	PyroWaveBitrateSlider->Maximum = kPyroWaveMaxBitrateKbps;
+	PyroWaveBitrateSlider->Minimum = kPyroWaveMinBitrateKbps;
 	Windows::UI::ViewManagement::ApplicationView::GetForCurrentView()->SetDesiredBoundsMode(Windows::UI::ViewManagement::ApplicationViewBoundsMode::UseVisible);
 	this->Loaded += ref new Windows::UI::Xaml::RoutedEventHandler(this, &HostSettingsPage::OnLoaded);
 	this->Unloaded += ref new Windows::UI::Xaml::RoutedEventHandler(this, &HostSettingsPage::OnUnloaded);
@@ -81,6 +83,7 @@ void HostSettingsPage::OnNavigatedTo(Windows::UI::Xaml::Navigation::NavigationEv
 			host->VideoCodec = "HEVC (H.265)";
 		}
 	}
+	UpdateBitrateControls(host->VideoCodec);
 	AvailableAudioConfigs->Append("Stereo");
 	AvailableAudioConfigs->Append("Surround 5.1");
 	AvailableAudioConfigs->Append("Surround 7.1");
@@ -218,7 +221,7 @@ void HostSettingsPage::ResolutionSelector_SelectionChanged(Platform::Object^ sen
 
 	// Default to a new bitrate if a new resolution was chosen
 	if (selectedResolution->Width != host->Resolution->Width) {
-		host->Bitrate = getDefaultBitrate(selectedResolution->Width, selectedResolution->Height, host->FPS, host->VideoCodec);
+		host->Bitrate = getDefaultBitrate(selectedResolution->Width, selectedResolution->Height, host->FPS);
 	}
 
 	host->Resolution = selectedResolution;
@@ -231,7 +234,7 @@ void HostSettingsPage::FPSSelector_SelectionChanged(Platform::Object^ sender, Wi
 
 	// Default to a new bitrate if a new FPS was chosen
 	if (selectedFPS != host->FPS) {
-		host->Bitrate = getDefaultBitrate(host->Resolution->Width, host->Resolution->Height, selectedFPS, host->VideoCodec);
+		host->Bitrate = getDefaultBitrate(host->Resolution->Width, host->Resolution->Height, selectedFPS);
 	}
 
 	host->FPS = selectedFPS;
@@ -250,13 +253,31 @@ void HostSettingsPage::AutoStartSelector_SelectionChanged(Platform::Object^ send
 
 void HostSettingsPage::CodecComboBox_SelectionChanged(Platform::Object^ sender, Windows::UI::Xaml::Controls::SelectionChangedEventArgs^ e)
 {
+	if (host == nullptr || CodecComboBox->SelectedIndex < 0) return;
 	auto selectedCodec = AvailableVideoCodecs->GetAt(this->CodecComboBox->SelectedIndex);
 
-	if (selectedCodec != host->VideoCodec) {
-		host->Bitrate = getDefaultBitrate(host->Resolution->Width, host->Resolution->Height, host->FPS, selectedCodec);
-	}
-
+	// Each codec family keeps its own bitrate, so switching never overwrites either one.
 	host->VideoCodec = selectedCodec;
+	UpdateBitrateControls(selectedCodec);
+}
+
+// Shows the slider for the selected codec's bitrate, and the gigabit warning
+// when a PyroWave bitrate would saturate the console's 1 GbE link.
+void HostSettingsPage::UpdateBitrateControls(Platform::String^ codec)
+{
+	bool pyrowave = IsPyroWaveCodec(codec);
+	BitrateSlider->Visibility = pyrowave ? Windows::UI::Xaml::Visibility::Collapsed : Windows::UI::Xaml::Visibility::Visible;
+	PyroWaveBitrateSlider->Visibility = pyrowave ? Windows::UI::Xaml::Visibility::Visible : Windows::UI::Xaml::Visibility::Collapsed;
+	bool warn = pyrowave && host->PyroWaveBitrate > kPyroWaveGigabitWarnBitrateKbps;
+	PyroWaveBitrateWarning->Visibility = warn ? Windows::UI::Xaml::Visibility::Visible : Windows::UI::Xaml::Visibility::Collapsed;
+}
+
+void HostSettingsPage::PyroWaveBitrateSlider_ValueChanged(Platform::Object^ sender, Windows::UI::Xaml::Controls::Primitives::RangeBaseValueChangedEventArgs^ e)
+{
+	// Also fires from the constructor's range setup, before host is set
+	if (host == nullptr || PyroWaveBitrateWarning == nullptr) return;
+	bool warn = IsPyroWaveCodec(host->VideoCodec) && e->NewValue > kPyroWaveGigabitWarnBitrateKbps;
+	PyroWaveBitrateWarning->Visibility = warn ? Windows::UI::Xaml::Visibility::Visible : Windows::UI::Xaml::Visibility::Collapsed;
 }
 
 void HostSettingsPage::FramePacing_SelectionChanged(Platform::Object^ sender, Windows::UI::Xaml::Controls::SelectionChangedEventArgs^ e)
@@ -309,7 +330,7 @@ void HostSettingsPage::OnUnloaded(Platform::Object^ sender, Windows::UI::Xaml::R
 	navigation->BackRequested -= m_back_cookie;
 }
 
-int HostSettingsPage::getDefaultBitrate(int width, int height, int fps, Platform::String^ codec)
+int HostSettingsPage::getDefaultBitrate(int width, int height, int fps)
 {
     // Don't scale bitrate linearly beyond 60 FPS. It's definitely not a linear
     // bitrate increase for frame rate once we get to values that high.
@@ -354,25 +375,6 @@ int HostSettingsPage::getDefaultBitrate(int width, int height, int fps, Platform
             break;
         }
     }
-
-	// PyroWave is intra-only and needs far more bitrate than H.264/HEVC for
-	// the same quality. When it is selected, raise the bitrate to roughly
-	// 0.5 bits/pixel at the configured resolution and frame rate.
-	if (codec == "PyroWave 4:2:0" || codec == "PyroWave 4:4:4") {
-		switch (height) {
-			case 2160:
-				resolutionFactor = 500;
-				break;
-			case 1440:
-				resolutionFactor = 250;
-				break;
-			default:
-				resolutionFactor = 125;
-				break;
-		}
-
-		frameRateFactor = fps / 120.0;
-	}
 
     return std::lround(resolutionFactor * frameRateFactor) * 1000;
 }

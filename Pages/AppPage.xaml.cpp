@@ -162,6 +162,7 @@ void AppPage::Connect(int appId) {
 	config->width = host->Resolution->Width;
 	config->height = host->Resolution->Height;
 	config->bitrate = host->Bitrate;
+	config->pyroWaveBitrate = host->PyroWaveBitrate;
 	config->FPS = host->FPS;
 	config->audioConfig = host->AudioConfig;
 	config->videoCodec = host->VideoCodec;

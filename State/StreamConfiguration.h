@@ -10,6 +10,7 @@ namespace moonlight_xbox_dx
 		property int width;
 		property int height;
 		property int bitrate;
+		property int pyroWaveBitrate;
 		property int FPS;
 		property bool supportsHevc;
 		property Platform::String^ audioConfig;

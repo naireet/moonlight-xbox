@@ -4,6 +4,19 @@
 #include "State\ScreenResolution.h"
 namespace moonlight_xbox_dx {
 
+    // PyroWave bitrate setting, kept apart from the standard (H.264/HEVC) one.
+    // The default is a placeholder until the host-side bitrate sweep picks one.
+    constexpr int kPyroWaveDefaultBitrateKbps = 600000;
+    constexpr int kPyroWaveMinBitrateKbps = 50000;
+    constexpr int kPyroWaveMaxBitrateKbps = 1000000;
+    // Series X has 1 GbE. With ~7.2% per-packet wire overhead and 20% host FEC,
+    // anything above this leaves no headroom on the link.
+    constexpr int kPyroWaveGigabitWarnBitrateKbps = 650000;
+
+    inline bool IsPyroWaveCodec(Platform::String ^ codec) {
+        return codec == "PyroWave 4:2:0" || codec == "PyroWave 4:4:4";
+    }
+
     [Windows::UI::Xaml::Data::Bindable]
     public ref class MoonlightHost sealed : Windows::UI::Xaml::Data::INotifyPropertyChanged
     {
@@ -21,6 +34,7 @@ namespace moonlight_xbox_dx {
         MoonlightClient* client;
         int currentlyRunningAppId;
         int bitrate = 20000;
+        int pyroWaveBitrate = kPyroWaveDefaultBitrateKbps;
         ScreenResolution^ resolution;
         int fps = 60;
         int autostartID = -1;
@@ -191,6 +205,16 @@ namespace moonlight_xbox_dx {
             void set(int value) {
                 this->bitrate = value;
                 OnPropertyChanged("Bitrate");
+            }
+        }
+
+        // Used instead of Bitrate when PyroWave is selected and negotiable.
+        property int PyroWaveBitrate
+        {
+            int get() { return this->pyroWaveBitrate; }
+            void set(int value) {
+                this->pyroWaveBitrate = value;
+                OnPropertyChanged("PyroWaveBitrate");
             }
         }
 
