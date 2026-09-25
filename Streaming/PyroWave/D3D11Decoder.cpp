@@ -256,20 +256,33 @@ bool Decoder::EnsurePayloadBuffer(size_t requiredBytes) {
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 	ComPtr<ID3D11Buffer> buffer;
-	DX::ThrowIfFailed(m_device->CreateBuffer(&desc, nullptr, &buffer), "payload buffer");
+	ComPtr<ID3D11ShaderResourceView> u8Srv, u16Srv, u32Srv;
 
+	// Called per frame from Decode, i.e. from a noexcept decoder callback, so a
+	// failed allocation must drop the frame rather than throw.
 	auto makeSrv = [&](DXGI_FORMAT format, UINT elements, ComPtr<ID3D11ShaderResourceView> &srv) {
 		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 		srvDesc.Format = format;
 		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
 		srvDesc.Buffer.NumElements = elements;
-		DX::ThrowIfFailed(m_device->CreateShaderResourceView(buffer.Get(), &srvDesc, &srv), "payload SRV");
+		return m_device->CreateShaderResourceView(buffer.Get(), &srvDesc, &srv);
 	};
-	makeSrv(DXGI_FORMAT_R8_UINT, (UINT)newSize, m_payloadU8Srv);
-	makeSrv(DXGI_FORMAT_R16_UINT, (UINT)(newSize / 2), m_payloadU16Srv);
-	makeSrv(DXGI_FORMAT_R32_UINT, (UINT)(newSize / 4), m_payloadU32Srv);
+	HRESULT hr = m_device->CreateBuffer(&desc, nullptr, &buffer);
+	if (SUCCEEDED(hr))
+		hr = makeSrv(DXGI_FORMAT_R8_UINT, (UINT)newSize, u8Srv);
+	if (SUCCEEDED(hr))
+		hr = makeSrv(DXGI_FORMAT_R16_UINT, (UINT)(newSize / 2), u16Srv);
+	if (SUCCEEDED(hr))
+		hr = makeSrv(DXGI_FORMAT_R32_UINT, (UINT)(newSize / 4), u32Srv);
+	if (FAILED(hr)) {
+		Utils::Logf("PyroWave: payload buffer allocation of %zu bytes failed (hr 0x%08x)\n", newSize, hr);
+		return false;
+	}
 
 	m_payloadBuffer = buffer;
+	m_payloadU8Srv = u8Srv;
+	m_payloadU16Srv = u16Srv;
+	m_payloadU32Srv = u32Srv;
 	m_payloadBufferBytes = newSize;
 	return true;
 }
